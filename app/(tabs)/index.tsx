@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useState } from 'react';
 import {
+  Alert,
+  FlatList,
   StyleSheet,
   Text,
-  View,
   TextInput,
   TouchableOpacity,
-  FlatList,
-  Alert,
+  View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface HistoryItem {
   id: string;
@@ -57,19 +57,19 @@ export default function IndexScreen() {
   };
 
   const clearHistory = () => {
-  Alert.alert(
-    'Onay',
-    'Geçmiş tamamen silinecektir. Emin misiniz?',
-    [
-      { text: 'İptal', style: 'cancel' },
-      {
-        text: 'Sil',
-        style: 'destructive',
-        onPress: () => setHistory([]),
-      },
-    ],
-    { cancelable: true }
-  );
+    Alert.alert(
+      'Onay',
+      'Geçmiş tamamen silinecektir. Emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: () => setHistory([]),
+        },
+      ],
+      { cancelable: true }
+    );
 };
 
   const addHistoryItem = (
@@ -87,38 +87,65 @@ export default function IndexScreen() {
     setHistory(prev => [newHistoryItem, ...prev]);
   };
 
-  const handleSubtract = () => {
-    const value = parseFloat(inputValue);
+const handleSubtract = () => {
+  const value = parseFloat(inputValue);
 
-    if (isNaN(value) || value <= 0) {
-      Alert.alert('Geçersiz miktar', 'Lütfen pozitif bir miktar giriniz.');
-      return;
-    }
+  if (isNaN(value) || value <= 0) {
+    Alert.alert('Geçersiz miktar', 'Lütfen pozitif bir miktar giriniz.');
+    return;
+  }
 
-    if (value > balance) {
-      Alert.alert('Yetersiz bakiye', 'Girdiğiniz miktar bakiyenizden büyük olamaz.');
-      return;
-    }
+  if (value > balance) {
+    Alert.alert('Yetersiz bakiye', 'Girdiğiniz miktar bakiyenizden büyük olamaz.');
+    return;
+  }
 
-    const newBal = balance - value;
-    setBalance(newBal);
-    addHistoryItem(-value, newBal, 'purchased');
-    setInputValue('');
-  };
+  Alert.alert(
+    'Onay',
+    `${value.toFixed(2)} zł yakıt alınacaktır. Emin misiniz?`,
+    [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: 'Evet',
+        onPress: () => {
+          const newBal = balance - value;
+          setBalance(newBal);
+          addHistoryItem(-value, newBal, 'purchased');
+          setInputValue('');
+        },
+      },
+    ],
+    { cancelable: true }
+  );
+};
 
-  const handleAddBalance = () => {
-    const value = parseFloat(inputValue);
+const handleAddBalance = () => {
+  const value = parseFloat(inputValue);
 
-    if (isNaN(value) || value <= 0) {
-      Alert.alert('Geçersiz miktar', 'Lütfen pozitif bir miktar giriniz.');
-      return;
-    }
+  if (isNaN(value) || value <= 0) {
+    Alert.alert('Geçersiz miktar', 'Lütfen pozitif bir miktar giriniz.');
+    return;
+  }
 
-    const newBal = balance + value;
-    setBalance(newBal);
-    addHistoryItem(value, newBal, 'added');
-    setInputValue('');
-  };
+  Alert.alert(
+    'Onay',
+    `${value.toFixed(2)} zł bakiye eklenecektir. Emin misiniz?`,
+    [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: 'Evet',
+        onPress: () => {
+          const newBal = balance + value;
+          setBalance(newBal);
+          addHistoryItem(value, newBal, 'added');
+          setInputValue('');
+        },
+      },
+    ],
+    { cancelable: true }
+  );
+};
+
 
 const handleSetBalanceDirectly = () => {
   const value = parseFloat(inputValue);
