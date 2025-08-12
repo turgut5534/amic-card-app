@@ -1,361 +1,87 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {
-  Alert,
-  FlatList,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+const BALANCE_KEY_CARD1 = '@amic_balance_card1';
+const BALANCE_KEY_CARD2 = '@amic_balance_card2';
+const SELECTED_CARD_KEY = '@amic_selected_card';
 
-interface HistoryItem {
-  id: string;
-  amount: number; // pozitif: eklenen, negatif: harcanan
-  newBalance: number;
-  date: string;
-  type: 'added' | 'purchased' | 'setted'; // işlem tipi
-}
+export default function HomeScreen() {
+  const router = useRouter();
+  const [balances, setBalances] = useState({ card1: 0, card2: 0 });
 
-const STORAGE_BALANCE_KEY = '@amic_balance';
-const STORAGE_HISTORY_KEY = '@amic_history';
-
-export default function IndexScreen() {
-  const [balance, setBalance] = useState<number>(100);
-  const [inputValue, setInputValue] = useState<string>('');
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-
-const [loading, setLoading] = useState(true);
-
-useEffect(() => {
-  const loadData = async () => {
+  const loadBalances = useCallback(async () => {
     try {
-      const savedBalance = await AsyncStorage.getItem(STORAGE_BALANCE_KEY);
-      const savedHistory = await AsyncStorage.getItem(STORAGE_HISTORY_KEY);
-
-      if (savedBalance !== null) setBalance(parseFloat(savedBalance));
-      if (savedHistory !== null) setHistory(JSON.parse(savedHistory));
-    } catch (error) {
-      console.error('Veri yüklenirken hata oluştu', error);
-    } finally {
-      setLoading(false); // ✅ data is loaded
+      const saved1 = await AsyncStorage.getItem(BALANCE_KEY_CARD1);
+      const saved2 = await AsyncStorage.getItem(BALANCE_KEY_CARD2);
+      setBalances({
+        card1: saved1 ? parseFloat(saved1) : 0,
+        card2: saved2 ? parseFloat(saved2) : 0,
+      });
+    } catch (err) {
+      console.error('Bakiye yüklenemedi', err);
     }
-  };
-  loadData();
-}, []);
+  }, []);
 
-useEffect(() => {
-  if (!loading) { // ✅ only save after initial load
-    AsyncStorage.setItem(STORAGE_BALANCE_KEY, balance.toString());
-    AsyncStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(history));
-  }
-}, [balance, history, loading]);
+  // Ekran her odaklandığında bakiyeleri yeniden yükle
+  useFocusEffect(
+    useCallback(() => {
+      loadBalances();
+    }, [loadBalances])
+  );
 
-
-  const getFormattedDate = () => {
-    const now = new Date();
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const year = now.getFullYear();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  const handleSelectCard = async (cardNumber: 1 | 2) => {
+    await AsyncStorage.setItem(SELECTED_CARD_KEY, cardNumber.toString());
+    router.push('/cards'); // Bakiye ekranına yönlendir (navigate yerine push tercih edilir)
   };
 
-  const addHistoryItem = (
-    amount: number,
-    newBal: number,
-    type: 'added' | 'purchased' | 'setted'
-  ) => {
-    const newHistoryItem: HistoryItem = {
-      id: Date.now().toString(),
-      amount,
-      newBalance: newBal,
-      date: getFormattedDate(),
-      type,
-    };
-    setHistory(prev => [newHistoryItem, ...prev]);
+  const Card = ({ number, balance }: { number: 1 | 2; balance: number }) => {
+    const cardNames = { 1: 'E100', 2: 'Amic' };
+    const cardColors = { 1: '#d31a1aff', 2: '#27ae60' }; // Farklı renkler
+
+    return (
+      <TouchableOpacity
+        style={[styles.card, { backgroundColor: cardColors[number] }]}
+        onPress={() => handleSelectCard(number)}
+      >
+        <Text style={styles.cardTitle}>{cardNames[number]}</Text>
+        <Text style={styles.balanceLabel}>Bakiye</Text>
+        <Text style={styles.balance}>{balance.toFixed(2)} zł</Text>
+      </TouchableOpacity>
+    );
   };
-
-const handleSubtract = () => {
-  const value = parseFloat(inputValue);
-
-  if (isNaN(value) || value <= 0) {
-    Alert.alert('Geçersiz miktar', 'Lütfen pozitif bir miktar giriniz.');
-    return;
-  }
-
-  if (value > balance) {
-    Alert.alert('Yetersiz bakiye', 'Girdiğiniz miktar bakiyenizden büyük olamaz.');
-    return;
-  }
-
-  Alert.alert(
-    'Onay',
-    `${value.toFixed(2)} zł yakıt alınacaktır. Emin misiniz?`,
-    [
-      { text: 'İptal', style: 'cancel' },
-      {
-        text: 'Evet',
-        onPress: () => {
-          const newBal = balance - value;
-          setBalance(newBal);
-          addHistoryItem(-value, newBal, 'purchased');
-          setInputValue('');
-        },
-      },
-    ],
-    { cancelable: true }
-  );
-};
-
-const handleAddBalance = () => {
-  const value = parseFloat(inputValue);
-
-  if (isNaN(value) || value <= 0) {
-    Alert.alert('Geçersiz miktar', 'Lütfen pozitif bir miktar giriniz.');
-    return;
-  }
-
-  Alert.alert(
-    'Onay',
-    `${value.toFixed(2)} zł bakiye eklenecektir. Emin misiniz?`,
-    [
-      { text: 'İptal', style: 'cancel' },
-      {
-        text: 'Evet',
-        onPress: () => {
-          const newBal = balance + value;
-          setBalance(newBal);
-          addHistoryItem(value, newBal, 'added');
-          setInputValue('');
-        },
-      },
-    ],
-    { cancelable: true }
-  );
-};
-
-
-const handleSetBalanceDirectly = () => {
-  const value = parseFloat(inputValue);
-
-  if (isNaN(value) || value < 0) {
-    Alert.alert('Geçersiz miktar', 'Lütfen sıfır veya pozitif bir miktar giriniz.');
-    return;
-  }
-
-  Alert.alert(
-    'Onay',
-    'Bakiye manuel olarak değişecektir. Emin misiniz?',
-    [
-      { text: 'İptal', style: 'cancel' },
-      {
-        text: 'Evet',
-        onPress: () => {
-          setBalance(value);
-          addHistoryItem(value - balance, value, 'setted');
-          setInputValue('');
-        },
-      },
-    ],
-    { cancelable: true }
-  );
-};
-
 
   return (
-    <SafeAreaView  style={styles.container}>
-      <Text style={styles.title}>💳 Amic Kart</Text>
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.header}>💳 Kart Seçimi</Text>
+      <Text style={styles.subHeader}>Lütfen işlem yapmak istediğiniz kartı seçin.</Text>
 
-      <TouchableOpacity style={styles.setDirectButton} onPress={handleSetBalanceDirectly}>
-        <Text style={styles.setDirectButtonText}>Manuel Bakiye Ata</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.balance}>Bakiye: {balance.toFixed(2)} zł</Text>
-
-      <TextInput
-        style={styles.input}
-        keyboardType="numeric"
-        placeholder="Miktar giriniz"
-        value={inputValue}
-        onChangeText={setInputValue}
-      />
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.buttonSubtract} onPress={handleSubtract}>
-          <Text style={styles.buttonText}>Yakıt Al</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.buttonAdd} onPress={handleAddBalance}>
-          <Text style={styles.buttonText}>Bakiye Ekle</Text>
-        </TouchableOpacity>
+      <View style={styles.cardContainer}>
+        <Card number={1} balance={balances.card1} />
+        <Card number={2} balance={balances.card2} />
       </View>
-
-      <View style={styles.historyHeader}>
-        <Text style={styles.historyTitle}>Son 10 İşlem</Text>
-      </View>
-
-      <FlatList
-        data={history.slice(0,10)}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <View
-            style={[
-              styles.historyItem,
-              { borderLeftColor: item.amount < 0 ? '#e74c3c' : '#27ae60' },
-              styles.historyItemRow,
-            ]}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.historyText}>
-                {item.type === 'added' && (
-                  <>+{item.amount.toFixed(2)} zł eklendi → Bakiye: {item.newBalance.toFixed(2)} zł</>
-                )}
-                {item.type === 'purchased' && (
-                  <>{item.amount.toFixed(2)} zł harcandı → Bakiye : {item.newBalance.toFixed(2)} zł</>
-                )}
-                {item.type === 'setted' && (
-                  <>{item.newBalance.toFixed(2)} zł manuel ayarlandı</>
-                )}
-              </Text>
-              <Text style={styles.historyDate}>{item.date}</Text>
-            </View>
-          </View>
-        )}
-        ListEmptyComponent={<Text style={styles.emptyHistory}>Henüz işlem yok</Text>}
-      />
-    </SafeAreaView >
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f4f6f9',
-    padding: 20,
-    paddingTop: 50,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  setDirectButton: {
-    backgroundColor: '#f39c12',
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 15,
-    alignSelf: 'center',
-    paddingHorizontal: 15,
-  },
-  setDirectButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  balance: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#27ae60',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 18,
-    marginBottom: 15,
-    backgroundColor: '#fff',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 25,
-  },
-  buttonSubtract: {
-    flex: 1,
+  container: { flex: 1, backgroundColor: '#f4f6f9', padding: 20 },
+  header: { fontSize: 26, fontWeight: '700', marginBottom: 4 },
+  subHeader: { fontSize: 16, color: '#777', marginBottom: 20 },
+  cardContainer: { gap: 16 },
+  card: {
     backgroundColor: '#2980b9',
-    paddingVertical: 15,
-    borderRadius: 10,
-    marginRight: 5,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  buttonAdd: {
-    flex: 1,
-    backgroundColor: '#27ae60',
-    paddingVertical: 15,
-    borderRadius: 10,
-    marginLeft: 5,
-  },
-  buttonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  historyTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-  },
-  historyItem: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderLeftWidth: 5,
-  },
-  historyItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  historyText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  historyDate: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-  },
-  emptyHistory: {
-    color: '#888',
-    textAlign: 'center',
-    marginTop: 10,
-  },
-  deleteButton: {
-    backgroundColor: '#e74c3c',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    marginLeft: 10,
-  },
-  deleteButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-   clearHistoryButton: {
-    backgroundColor: '#c0392b',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-   clearHistoryButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-   historyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  }
+  cardTitle: { fontSize: 18, color: '#fff', fontWeight: '600' },
+  balanceLabel: { fontSize: 14, color: '#dce6f1', marginTop: 10 },
+  balance: { fontSize: 32, fontWeight: 'bold', color: '#fff', marginTop: 5 },
 });

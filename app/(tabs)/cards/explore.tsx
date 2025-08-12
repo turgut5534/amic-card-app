@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-
 import {
   ActivityIndicator,
   FlatList,
@@ -20,35 +19,58 @@ interface HistoryItem {
   type: 'added' | 'purchased' | 'setted';
 }
 
-const STORAGE_HISTORY_KEY = '@amic_history';
+const STORAGE_HISTORY_KEY_CARD1 = '@amic_history_card1';
+const STORAGE_HISTORY_KEY_CARD2 = '@amic_history_card2';
+const STORAGE_BALANCE_KEY_CARD1 = '@amic_balance_card1';
+const STORAGE_BALANCE_KEY_CARD2 = '@amic_balance_card2';
+const SELECTED_CARD_KEY = '@amic_selected_card';
+
 const PAGE_SIZE = 20;
 
 export default function HistoryTab() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [balance, setBalance] = useState<number>(0);
+  const [selectedCardNumber, setSelectedCardNumber] = useState<1 | 2>(1);
+  const [selectedCardName, setSelectedCardName] = useState<string>('E100');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  const loadHistory = useCallback(async () => {
+  const getKeysForCard = (cardNumber: 1 | 2) => {
+    return {
+      balanceKey: cardNumber === 1 ? STORAGE_BALANCE_KEY_CARD1 : STORAGE_BALANCE_KEY_CARD2,
+      historyKey: cardNumber === 1 ? STORAGE_HISTORY_KEY_CARD1 : STORAGE_HISTORY_KEY_CARD2,
+      cardName: cardNumber === 1 ? 'E100' : 'Amic',
+    };
+  };
+
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const saved = await AsyncStorage.getItem(STORAGE_HISTORY_KEY);
-      if (saved) {
-        const parsed: HistoryItem[] = JSON.parse(saved);
-        setHistory(parsed);
-      } else {
-        setHistory([]);
-      }
+      const selectedCardStr = await AsyncStorage.getItem(SELECTED_CARD_KEY);
+      const cardNum = selectedCardStr === '2' ? 2 : 1;
+      setSelectedCardNumber(cardNum);
+
+      const { balanceKey, historyKey, cardName } = getKeysForCard(cardNum);
+      setSelectedCardName(cardName);
+
+      const savedBalance = await AsyncStorage.getItem(balanceKey);
+      setBalance(savedBalance ? parseFloat(savedBalance) : 0);
+
+      const savedHistory = await AsyncStorage.getItem(historyKey);
+      setHistory(savedHistory ? JSON.parse(savedHistory) : []);
     } catch (e) {
-      console.error('Failed to load history', e);
+      console.error('Failed to load history or balance', e);
+      setHistory([]);
+      setBalance(0);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
+    loadData();
+  }, [loadData]);
 
   const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
 
@@ -74,7 +96,7 @@ export default function HistoryTab() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadHistory();
+    await loadData();
     setRefreshing(false);
   };
 
@@ -84,6 +106,9 @@ export default function HistoryTab() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Text style={styles.title}>
+        {selectedCardName} Kart Bakiyesi: {balance.toFixed(2)} zł
+      </Text>
       <Text style={styles.title}>
         Geçmiş ({history.length} işlem)
       </Text>
