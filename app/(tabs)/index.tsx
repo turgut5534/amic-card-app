@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const BALANCE_KEY_CARD1 = '@amic_balance_card1';
@@ -43,6 +43,8 @@ export default function HomeScreen() {
     const cardColors = { 1: '#d31a1aff', 2: '#27ae60' }; // Farklı renkler
 
     return (
+      <>
+      <StatusBar backgroundColor="black" barStyle="light-content" />
       <TouchableOpacity
         style={[styles.card, { backgroundColor: cardColors[number] }]}
         onPress={() => handleSelectCard(number)}
@@ -51,6 +53,7 @@ export default function HomeScreen() {
         <Text style={styles.balanceLabel}>Bakiye</Text>
         <Text style={styles.balance}>{balance.toFixed(2)} zł</Text>
       </TouchableOpacity>
+      </>
     );
   };
 

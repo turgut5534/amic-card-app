@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 interface HistoryItem {
   id: string;
@@ -24,6 +26,8 @@ export default function IndexScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedCardName, setSelectedCardName] = useState('E100');
   const [selectedCardNumber, setSelectedCardNumber] = useState<1 | 2>(1);
+
+  const router = useRouter(); 
 
   // Tarih formatı
   const getFormattedDate = () => {
@@ -158,94 +162,70 @@ export default function IndexScreen() {
     );
   };
 
-  // Manuel bakiye ata
-  const handleSetBalanceDirectly = () => {
-    const value = parseFloat(inputValue);
-
-    if (isNaN(value) || value < 0) {
-      Alert.alert('Geçersiz miktar', 'Lütfen sıfır veya pozitif bir miktar giriniz.');
-      return;
-    }
-
-    Alert.alert(
-      'Onay',
-      'Bakiye manuel olarak değişecektir. Emin misiniz?',
-      [
-        { text: 'İptal', style: 'cancel' },
-        {
-          text: 'Evet',
-          onPress: () => {
-            setBalance(value);
-            addHistoryItem(value - balance, value, 'setted');
-            setInputValue('');
-          },
-        },
-      ],
-      { cancelable: true }
-    );
-  };
-
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>💳 {selectedCardName} Kart</Text>
+      <>
+       <StatusBar backgroundColor="black" barStyle="light-content" />
+        <SafeAreaView edges={['bottom']}  style={styles.container}>
+                <TouchableOpacity style={styles.backSmallButton} onPress={() => router.push('/')}>
+            <Text style={styles.backSmallButtonText}>← Kart Seç</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>💳 {selectedCardName} Kart</Text>
 
-      <TouchableOpacity style={styles.setDirectButton} onPress={handleSetBalanceDirectly}>
-        <Text style={styles.setDirectButtonText}>Manuel Bakiye Ata</Text>
-      </TouchableOpacity>
+          <Text style={styles.balance}>Bakiye: {balance.toFixed(2)} zł</Text>
 
-      <Text style={styles.balance}>Bakiye: {balance.toFixed(2)} zł</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="numeric"
+            placeholder="Miktar giriniz"
+            value={inputValue}
+            onChangeText={setInputValue}
+          />
 
-      <TextInput
-        style={styles.input}
-        keyboardType="numeric"
-        placeholder="Miktar giriniz"
-        value={inputValue}
-        onChangeText={setInputValue}
-      />
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.buttonSubtract} onPress={handleSubtract}>
-          <Text style={styles.buttonText}>Yakıt Al</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.buttonAdd} onPress={handleAddBalance}>
-          <Text style={styles.buttonText}>Bakiye Ekle</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.historyHeader}>
-        <Text style={styles.historyTitle}>Son 10 İşlem</Text>
-      </View>
-
-      <FlatList
-        data={history.slice(0, 10)}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <View
-            style={[
-              styles.historyItem,
-              { borderLeftColor: item.amount < 0 ? '#e74c3c' : '#27ae60' },
-              styles.historyItemRow,
-            ]}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.historyText}>
-                {item.type === 'added' && (
-                  <>+{item.amount.toFixed(2)} zł eklendi → Bakiye: {item.newBalance.toFixed(2)} zł</>
-                )}
-                {item.type === 'purchased' && (
-                  <>{item.amount.toFixed(2)} zł harcandı → Bakiye : {item.newBalance.toFixed(2)} zł</>
-                )}
-                {item.type === 'setted' && (
-                  <>{item.newBalance.toFixed(2)} zł manuel ayarlandı</>
-                )}
-              </Text>
-              <Text style={styles.historyDate}>{item.date}</Text>
-            </View>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.buttonSubtract} onPress={handleSubtract}>
+              <Text style={styles.buttonText}>Yakıt Al</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.buttonAdd} onPress={handleAddBalance}>
+              <Text style={styles.buttonText}>Bakiye Ekle</Text>
+            </TouchableOpacity>
           </View>
-        )}
-        ListEmptyComponent={<Text style={styles.emptyHistory}>Henüz işlem yok</Text>}
-      />
-    </SafeAreaView>
+
+          <View style={styles.historyHeader}>
+            <Text style={styles.historyTitle}>Son İşlemler</Text>
+          </View>
+
+          <FlatList
+            data={history.slice(0, 10)}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => (
+              <View
+                style={[
+                  styles.historyItem,
+                  { borderLeftColor: item.amount < 0 ? '#e74c3c' : '#27ae60' },
+                  styles.historyItemRow,
+                ]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.historyText}>
+                    {item.type === 'added' && (
+                      <>+{item.amount.toFixed(2)} zł eklendi → Bakiye: {item.newBalance.toFixed(2)} zł</>
+                    )}
+                    {item.type === 'purchased' && (
+                      <>{item.amount.toFixed(2)} zł harcandı → Bakiye : {item.newBalance.toFixed(2)} zł</>
+                    )}
+                    {item.type === 'setted' && (
+                      <>{item.newBalance.toFixed(2)} zł manuel ayarlandı</>
+                    )}
+                  </Text>
+                  <Text style={styles.historyDate}>{item.date}</Text>
+                </View>
+              </View>
+            )}
+            ListEmptyComponent={<Text style={styles.emptyHistory}>Henüz işlem yok</Text>}
+          />
+
+        </SafeAreaView>
+    </>
   );
 }
 
@@ -352,4 +332,19 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 20,
   },
+  backSmallButton: {
+  paddingVertical: 10,
+  paddingHorizontal: 10,
+  backgroundColor: '#3498db',
+  borderRadius: 4,
+  alignSelf: 'flex-start',
+  marginTop: 20,    // Üstten boşluk ekledik
+  marginBottom: 10, // Alttan boşluk ekledik
+},
+backSmallButtonText: {
+  color: 'white',
+  fontWeight: '600',
+  fontSize: 14,
+},
+
 });
