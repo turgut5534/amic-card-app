@@ -65,22 +65,6 @@ useEffect(() => {
     return `${day}/${month}/${year} ${hours}:${minutes}`;
   };
 
-  const clearHistory = () => {
-    Alert.alert(
-      'Onay',
-      'Geçmiş tamamen silinecektir. Emin misiniz?',
-      [
-        { text: 'İptal', style: 'cancel' },
-        {
-          text: 'Sil',
-          style: 'destructive',
-          onPress: () => setHistory([]),
-        },
-      ],
-      { cancelable: true }
-    );
-};
-
   const addHistoryItem = (
     amount: number,
     newBal: number,
@@ -212,9 +196,6 @@ const handleSetBalanceDirectly = () => {
 
       <View style={styles.historyHeader}>
         <Text style={styles.historyTitle}>Son 10 İşlem</Text>
-        <TouchableOpacity style={styles.clearHistoryButton} onPress={clearHistory}>
-          <Text style={styles.clearHistoryButtonText}>Geçmişi Temizle</Text>
-        </TouchableOpacity>
       </View>
 
       <FlatList
