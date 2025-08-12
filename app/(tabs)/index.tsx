@@ -181,24 +181,6 @@ const handleSetBalanceDirectly = () => {
 };
 
 
-  const confirmDeleteHistoryItem = (id: string) => {
-    Alert.alert(
-      'Emin misiniz?',
-      'Bu işlemi silmek istediğinize emin misiniz?',
-      [
-        { text: 'İptal', style: 'cancel' },
-        {
-          text: 'Sil',
-          style: 'destructive',
-          onPress: () => {
-            setHistory(prev => prev.filter(item => item.id !== id));
-          },
-        },
-      ],
-      { cancelable: true }
-    );
-  };
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>💳 Amic Kart</Text>
@@ -227,14 +209,14 @@ const handleSetBalanceDirectly = () => {
       </View>
 
       <View style={styles.historyHeader}>
-        <Text style={styles.historyTitle}>Geçmiş</Text>
+        <Text style={styles.historyTitle}>Son 10 İşlem</Text>
         <TouchableOpacity style={styles.clearHistoryButton} onPress={clearHistory}>
           <Text style={styles.clearHistoryButtonText}>Geçmişi Temizle</Text>
         </TouchableOpacity>
       </View>
 
       <FlatList
-        data={history}
+        data={history.slice(0,10)}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
           <View
@@ -258,12 +240,6 @@ const handleSetBalanceDirectly = () => {
               </Text>
               <Text style={styles.historyDate}>{item.date}</Text>
             </View>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => confirmDeleteHistoryItem(item.id)}
-            >
-              <Text style={styles.deleteButtonText}>Sil</Text>
-            </TouchableOpacity>
           </View>
         )}
         ListEmptyComponent={<Text style={styles.emptyHistory}>Henüz işlem yok</Text>}

@@ -4,7 +4,7 @@
     "slug": "amic-card-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/fuel2.png",
     "scheme": "amiccardapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
