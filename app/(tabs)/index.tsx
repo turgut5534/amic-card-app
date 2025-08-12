@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import {
   Alert,
   FlatList,
@@ -182,7 +184,7 @@ const handleSetBalanceDirectly = () => {
 
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView  style={styles.container}>
       <Text style={styles.title}>💳 Amic Kart</Text>
 
       <TouchableOpacity style={styles.setDirectButton} onPress={handleSetBalanceDirectly}>
@@ -244,7 +246,7 @@ const handleSetBalanceDirectly = () => {
         )}
         ListEmptyComponent={<Text style={styles.emptyHistory}>Henüz işlem yok</Text>}
       />
-    </View>
+    </SafeAreaView >
   );
 }
 
