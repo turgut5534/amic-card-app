@@ -26,25 +26,32 @@ export default function IndexScreen() {
   const [inputValue, setInputValue] = useState<string>('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const savedBalance = await AsyncStorage.getItem(STORAGE_BALANCE_KEY);
-        const savedHistory = await AsyncStorage.getItem(STORAGE_HISTORY_KEY);
+const [loading, setLoading] = useState(true);
 
-        if (savedBalance !== null) setBalance(parseFloat(savedBalance));
-        if (savedHistory !== null) setHistory(JSON.parse(savedHistory));
-      } catch (error) {
-        console.error('Veri yüklenirken hata oluştu', error);
-      }
-    };
-    loadData();
-  }, []);
+useEffect(() => {
+  const loadData = async () => {
+    try {
+      const savedBalance = await AsyncStorage.getItem(STORAGE_BALANCE_KEY);
+      const savedHistory = await AsyncStorage.getItem(STORAGE_HISTORY_KEY);
 
-  useEffect(() => {
+      if (savedBalance !== null) setBalance(parseFloat(savedBalance));
+      if (savedHistory !== null) setHistory(JSON.parse(savedHistory));
+    } catch (error) {
+      console.error('Veri yüklenirken hata oluştu', error);
+    } finally {
+      setLoading(false); // ✅ data is loaded
+    }
+  };
+  loadData();
+}, []);
+
+useEffect(() => {
+  if (!loading) { // ✅ only save after initial load
     AsyncStorage.setItem(STORAGE_BALANCE_KEY, balance.toString());
     AsyncStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(history));
-  }, [balance, history]);
+  }
+}, [balance, history, loading]);
+
 
   const getFormattedDate = () => {
     const now = new Date();
