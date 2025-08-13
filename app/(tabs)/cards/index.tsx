@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 interface HistoryItem {
   id: string;
@@ -185,8 +187,22 @@ export default function IndexScreen() {
     );
   };
 
+  const handleGoBackToCardSelection = async () => {
+    await AsyncStorage.removeItem(SELECTED_CARD_KEY);
+    router.push('/');
+  };
+
+
   return (
     <SafeAreaView style={styles.container}>
+
+      <TouchableOpacity
+        style={styles.goBackButton}
+        onPress={handleGoBackToCardSelection}
+      >
+        <Text style={styles.goBackButtonText}>← Kartlarım</Text>
+      </TouchableOpacity>
+
       <Text style={styles.title}>💳 {selectedCardName} Kart</Text>
 
       <TouchableOpacity style={styles.setDirectButton} onPress={handleSetBalanceDirectly}>
@@ -346,10 +362,18 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 4,
   },
-  emptyHistory: {
-    textAlign: 'center',
-    color: '#aaa',
-    fontStyle: 'italic',
-    marginTop: 20,
-  },
+  goBackButton: {
+  backgroundColor: '#3498db',
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 5,
+  alignSelf: 'flex-start',
+  marginBottom: 12,
+},
+goBackButtonText: {
+  color: 'white',
+  fontSize: 16,
+  fontWeight: '600',
+},
+
 });
