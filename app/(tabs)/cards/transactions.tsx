@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -120,6 +121,9 @@ export default function HistoryTab() {
 
   return (
     <SafeAreaView style={styles.container}>
+        <TouchableOpacity style={styles.backSmallButton} onPress={() => router.push('/')}>
+                  <Text style={styles.backSmallButtonText}>← Back</Text>
+                </TouchableOpacity>
       <Text style={styles.title}>
         {selectedCardName} Card Balance: {balance.toFixed(2)} zł
       </Text>
@@ -188,6 +192,20 @@ const styles = StyleSheet.create({
   fontSize: 14,
   color: '#555',
   marginTop: 2,
-}
+},
+backSmallButton: {
+  paddingVertical: 10,
+  paddingHorizontal: 10,
+  backgroundColor: '#3498db',
+  borderRadius: 4,
+  alignSelf: 'flex-start',
+  marginTop: 20,    // Üstten boşluk ekledik
+  marginBottom: 10, // Alttan boşluk ekledik
+},
+backSmallButtonText: {
+  color: 'white',
+  fontWeight: '600',
+  fontSize: 14,
+},
 
 });

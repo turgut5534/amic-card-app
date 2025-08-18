@@ -225,9 +225,11 @@ export default function IndexScreen() {
       <>
        <StatusBar backgroundColor="black" barStyle="light-content" />
         <SafeAreaView edges={['bottom']}  style={styles.container}>
-                <TouchableOpacity style={styles.backSmallButton} onPress={() => router.push('/')}>
-            <Text style={styles.backSmallButtonText}>← Back</Text>
+
+          <TouchableOpacity style={styles.backSmallButton} onPress={() => router.push('/')}>
+              <Text style={styles.backSmallButtonText}>← Back</Text>
           </TouchableOpacity>
+          
           <Text style={styles.title}>💳 {selectedCardName} Kart</Text>
 
           <Text style={styles.balance}>Balance: {balance.toFixed(2)} zł</Text>
