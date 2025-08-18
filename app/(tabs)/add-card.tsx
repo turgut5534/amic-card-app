@@ -1,6 +1,16 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AddCardScreen() {
@@ -40,18 +50,21 @@ export default function AddCardScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-
-      <TouchableOpacity style={styles.backSmallButton} onPress={() => router.push('/')}>
-                  <Text style={styles.backSmallButtonText}>← Back</Text>
-                </TouchableOpacity>
       <StatusBar backgroundColor="#f4f6f9" barStyle="dark-content" />
+
+      {/* Back button */}
+      <TouchableOpacity style={styles.backSmallButton} onPress={() => router.push('/')}>
+        <Text style={styles.backSmallButtonText}>← Back</Text>
+      </TouchableOpacity>
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <Text style={styles.header}>💳 Add a New Card</Text>
 
-        <View style={styles.form}>
+        {/* Form inside a nice card box */}
+        <View style={styles.formCard}>
           <Text style={styles.label}>Card Name</Text>
           <TextInput
             value={cardName}
@@ -72,9 +85,12 @@ export default function AddCardScreen() {
           />
         </View>
 
-        <TouchableOpacity onPress={handleSubmit} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>＋ Add Card</Text>
-        </TouchableOpacity>
+        {/* Sticky button at bottom */}
+        <View style={styles.bottomButtonWrapper}>
+          <TouchableOpacity onPress={handleSubmit} style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>＋ Add Card</Text>
+          </TouchableOpacity>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -82,48 +98,61 @@ export default function AddCardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f4f6f9', padding: 20 },
-  header: { fontSize: 28, fontWeight: '700', marginBottom: 30, color: '#111' },
-  form: { flex: 1, justifyContent: 'center' },
-  label: { fontSize: 16, fontWeight: '500', color: '#333', marginBottom: 8 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    fontSize: 16,
-    color: '#111',
+  header: { fontSize: 24, fontWeight: '700', marginVertical: 10, color: '#111' },
+
+  // Card-like container for form
+  formCard: {
     backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 10,
     shadowColor: '#000',
     shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  label: { fontSize: 15, fontWeight: '500', color: '#333', marginBottom: 6, marginTop: 12 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: '#111',
+    backgroundColor: '#fafafa',
+  },
+
+  // Button pinned at bottom
+  bottomButtonWrapper: {
+    marginTop: 'auto',
+    marginBottom: 20,
   },
   primaryButton: {
     backgroundColor: '#4CAF50',
-    borderRadius: 20,
-    paddingVertical: 18,
+    borderRadius: 14,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#4CAF50',
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-    marginBottom: 20,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
-  primaryButtonText: { color: '#fff', fontSize: 20, fontWeight: '700' },
-   backSmallButton: {
-  paddingVertical: 10,
-  paddingHorizontal: 10,
-  backgroundColor: '#3498db',
-  borderRadius: 4,
-  alignSelf: 'flex-start',
-  marginTop: 20,    // Üstten boşluk ekledik
-  marginBottom: 10, // Alttan boşluk ekledik
-},
-backSmallButtonText: {
-  color: 'white',
-  fontWeight: '600',
-  fontSize: 14,
-},
+  primaryButtonText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+
+  // Back button
+  backSmallButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#3498db',
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+  },
+  backSmallButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+  },
 });

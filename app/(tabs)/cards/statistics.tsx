@@ -1,16 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
-    ActivityIndicator,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,14 +24,16 @@ export default function CardStatsScreen() {
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<'start' | 'end'>('start');
+  const [selectedCardName, setSelectedCardName] = useState<string>('');
 
   const SELECTED_CARD_KEY = '@amic_selected_card';
 
   // Fetch stats on mount (total stats)
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
+    useFocusEffect(
+    useCallback(() => {
+      fetchStats();
+    }, [startDate, endDate]) // re-run if filter changes too
+  );
   const fetchStats = async () => {
     try {
       setLoading(true);
@@ -44,6 +47,7 @@ export default function CardStatsScreen() {
 
       const response = await fetch(url);
       const data = await response.json();
+      setSelectedCardName(data.cardInfo.card_name)
       setTotalSpent(parseFloat(data.totalSpent));
       setTotalLiters(parseFloat(data.totalLiters));
     } catch (err) {
@@ -81,7 +85,7 @@ export default function CardStatsScreen() {
             <Text style={styles.backSmallButtonText}>← Back</Text>
         </TouchableOpacity>
 
-        <Text style={styles.header}>📊 Card Statistics</Text>
+        <Text style={styles.header}>📊 Card Statistics ({selectedCardName}) </Text>
 
         {/* Date Filter */}
         <View style={styles.filterContainer}>
@@ -111,6 +115,7 @@ export default function CardStatsScreen() {
               <Text style={styles.statLabel}>Total Fuel Liters</Text>
               <Text style={styles.statValue}>{totalLiters.toFixed(2)} L</Text>
             </View>
+            
           </>
         )}
 
