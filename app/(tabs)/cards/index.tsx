@@ -71,18 +71,33 @@ export default function IndexScreen() {
     const loadData = async () => {
       try {
         const selectedCard = await AsyncStorage.getItem(SELECTED_CARD_KEY);
-        const cardInfoRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/cards/${selectedCard}/info`);
+        const cardInfoRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/cards/${selectedCard}/info`, {
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.EXPO_PUBLIC_SECRET_API as string, // ✅ works in Expo
+        },
+      });
         const cardInfo = await cardInfoRes.json();
 
         setSelectedCardName(cardInfo.card_name)
 
-        const latestFuelPriceRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/cards/${selectedCard}/latest-fuel-price`);
+        const latestFuelPriceRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/cards/${selectedCard}/latest-fuel-price`, {
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.EXPO_PUBLIC_SECRET_API as string, // ✅ works in Expo
+          },
+        });
         const latestFuelPriceData = await latestFuelPriceRes.json()
 
         setFuelPrice(latestFuelPriceData.latest_fuel_price ?? fuelPrice)
         setBalance(parseInt(cardInfo.balance));
     
-        const historyItemsRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/cards/${selectedCard}/transactions`);
+        const historyItemsRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/cards/${selectedCard}/transactions`, {
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.EXPO_PUBLIC_SECRET_API as string, // ✅ works in Expo
+          },
+        });
         const data = await historyItemsRes.json();
 
         const mappedHistory: HistoryItem[] = data.transactions.map((item: any) => ({
@@ -138,6 +153,7 @@ export default function IndexScreen() {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
+                    "x-api-key": process.env.EXPO_PUBLIC_SECRET_API as string,
                   },
                   body: JSON.stringify({ amount: value, fuel_price: currentFuelPrice }),
                 }
@@ -194,6 +210,7 @@ export default function IndexScreen() {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
+                    "x-api-key": process.env.EXPO_PUBLIC_SECRET_API as string,
                   },
                   body: JSON.stringify({ amount: value }),
                 }

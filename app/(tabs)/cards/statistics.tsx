@@ -45,7 +45,12 @@ export default function CardStatsScreen() {
         url += `?start=${startDate.toISOString()}&end=${endDate.toISOString()}`;
       }
 
-      const response = await fetch(url);
+      const response = await fetch(url , {
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.EXPO_PUBLIC_SECRET_API as string, // ✅ works in Expo
+        },
+      });
       const data = await response.json();
       setSelectedCardName(data.cardInfo.card_name)
       setTotalSpent(parseFloat(data.totalSpent));

@@ -15,7 +15,13 @@ export default function HomeScreen() {
   const loadCards = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}`);
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}`, {
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.EXPO_PUBLIC_SECRET_API as string, // ✅ works in Expo
+        },
+      });
+
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       const mapped = data.map((c: any) => ({

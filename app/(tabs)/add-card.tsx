@@ -29,7 +29,9 @@ export default function AddCardScreen() {
     try {
       const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/cards/add`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json',
+          "x-api-key": process.env.EXPO_PUBLIC_SECRET_API as string,
+         },
         body: JSON.stringify({ name: cardName, balance }),
       });
 
