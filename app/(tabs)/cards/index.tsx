@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -220,15 +221,14 @@ export default function IndexScreen() {
     );
   };
 
-  const handleGoBackToCardSelection = async () => {
-    await AsyncStorage.removeItem(SELECTED_CARD_KEY);
-    router.push('/');
-  };
-
-
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>💳 {selectedCardName} Kart</Text>
+      <>
+       <StatusBar backgroundColor="black" barStyle="light-content" />
+        <SafeAreaView edges={['bottom']}  style={styles.container}>
+                <TouchableOpacity style={styles.backSmallButton} onPress={() => router.push('/')}>
+            <Text style={styles.backSmallButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>💳 {selectedCardName} Kart</Text>
 
           <Text style={styles.balance}>Balance: {balance.toFixed(2)} zł</Text>
 
@@ -416,4 +416,61 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 20,
   },
+  backSmallButton: {
+  paddingVertical: 10,
+  paddingHorizontal: 10,
+  backgroundColor: '#3498db',
+  borderRadius: 4,
+  alignSelf: 'flex-start',
+  marginTop: 20,    // Üstten boşluk ekledik
+  marginBottom: 10, // Alttan boşluk ekledik
+},
+backSmallButtonText: {
+  color: 'white',
+  fontWeight: '600',
+  fontSize: 14,
+},
+stepperContainer: {
+  marginBottom: 20,
+},
+stepperLabel: {
+  fontSize: 14,
+  color: '#555',
+  marginBottom: 5,
+  fontWeight: '500',
+},
+stepperRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: 'white',
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: '#ccc',
+  paddingHorizontal: 10,
+  paddingVertical: 5,
+},
+stepperButton: {
+  backgroundColor: '#3498db',
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  borderRadius: 6,
+},
+stepperButtonText: {
+  color: 'white',
+  fontSize: 20,
+  fontWeight: 'bold',
+},
+stepperValue: {
+  flex: 1,
+  textAlign: 'center',
+  fontSize: 16,
+  fontWeight: '600',
+},
+historyLiters: {
+  fontSize: 14,
+  color: '#555',
+  marginTop: 2,
+}
+
+
 });
