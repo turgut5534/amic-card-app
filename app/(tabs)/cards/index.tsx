@@ -21,8 +21,9 @@ export default function IndexScreen() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [inputValue, setInputValue] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [selectedCardName, setSelectedCardName] = useState('E100');
+  const [selectedCardName, setSelectedCardName] = useState('Loading...');
   const [fuelPrice, setFuelPrice] = useState<number>(2.40); // default value
+  const [loadingText, setLoadingText] = useState(true);
 
   const router = useRouter(); 
 
@@ -110,6 +111,7 @@ export default function IndexScreen() {
         }));
 
         setHistory(mappedHistory);
+        setLoadingText(false)
 
       } catch (error) {
         console.error('An error occurred', error);
@@ -247,7 +249,7 @@ export default function IndexScreen() {
               <Text style={styles.backSmallButtonText}>← Back</Text>
           </TouchableOpacity>
           
-          <Text style={styles.title}>💳 {selectedCardName} Kart</Text>
+          <Text style={styles.title}>💳 {selectedCardName}</Text>
 
           <Text style={styles.balance}>Balance: {balance.toFixed(2)} zł</Text>
 
@@ -324,7 +326,12 @@ export default function IndexScreen() {
                 </View>
               </View>
             )}
-            ListEmptyComponent={<Text style={styles.emptyHistory}>No transaction yet</Text>}
+            ListEmptyComponent={
+              <Text style={styles.emptyHistory}>
+                {loadingText ? "Loading..." : "No transaction yet"}
+              </Text>
+            }
+            
           />
 
         </SafeAreaView>

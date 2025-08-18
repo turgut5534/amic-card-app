@@ -2,8 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Alert, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 const SELECTED_CARD_KEY = '@amic_selected_card';
 
@@ -107,7 +108,7 @@ export default function HomeScreen() {
       <Text style={styles.header}>💳 Choose a Card</Text>
       <Text style={styles.subHeader}>Please choose a card that you want to make transaction.</Text>
 
-      <View style={styles.cardContainer}>
+      <ScrollView contentContainerStyle={styles.cardContainer}>
         {loading ? <Text>Loading...</Text> : cards.map(card => <Card key={card.id} card={card} />)}
 
         <TouchableOpacity
@@ -117,7 +118,7 @@ export default function HomeScreen() {
           <Text style={{ color: '#4CAF50', fontSize: 24, fontWeight: 'bold', marginRight: 12 }}>＋</Text>
           <Text style={{ color: '#fff', fontSize: 18, fontWeight: '600' }}>Add a New Card</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
