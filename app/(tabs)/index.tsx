@@ -2,69 +2,115 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const BALANCE_KEY_CARD1 = '@amic_balance_card1';
-const BALANCE_KEY_CARD2 = '@amic_balance_card2';
 const SELECTED_CARD_KEY = '@amic_selected_card';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [balances, setBalances] = useState({ card1: 0, card2: 0 });
+  const [cards, setCards] = useState<{ id: number; name: string; balance: number }[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const loadBalances = useCallback(async () => {
+  const loadCards = useCallback(async () => {
     try {
-      const saved1 = await AsyncStorage.getItem(BALANCE_KEY_CARD1);
-      const saved2 = await AsyncStorage.getItem(BALANCE_KEY_CARD2);
-      setBalances({
-        card1: saved1 ? parseFloat(saved1) : 0,
-        card2: saved2 ? parseFloat(saved2) : 0,
-      });
+      setLoading(true);
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}`);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const data = await response.json();
+      const mapped = data.map((c: any) => ({
+        id: c.card_id,
+        name: c.card_name,
+        balance: parseFloat(c.balance),
+      }));
+      setCards(mapped);
     } catch (err) {
-      console.error('Bakiye yüklenemedi', err);
+      console.error('Kartlar yüklenemedi', err);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  // Ekran her odaklandığında bakiyeleri yeniden yükle
   useFocusEffect(
     useCallback(() => {
-      loadBalances();
-    }, [loadBalances])
+      loadCards();
+    }, [loadCards])
   );
 
-  const handleSelectCard = async (cardNumber: 1 | 2) => {
-    await AsyncStorage.setItem(SELECTED_CARD_KEY, cardNumber.toString());
-    router.push('/cards'); // Bakiye ekranına yönlendir (navigate yerine push tercih edilir)
+  const handleSelectCard = async (cardId: number) => {
+    await AsyncStorage.setItem(SELECTED_CARD_KEY, cardId.toString());
+    router.push('/cards');
   };
 
-  const Card = ({ number, balance }: { number: 1 | 2; balance: number }) => {
-    const cardNames = { 1: 'E100', 2: 'Amic' };
-    const cardColors = { 1: '#d31a1aff', 2: '#27ae60' }; // Farklı renkler
+  const handleDeleteCard = (cardId: number) => {
+    Alert.alert(
+      'Delete Card',
+      'Are you sure you want to delete this card?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Optional: call API to delete
+              await fetch(`${process.env.EXPO_PUBLIC_API_URL}/cards/${cardId}/delete`, { method: 'DELETE' });
+              setCards(prev => prev.filter(c => c.id !== cardId));
+            } catch (err) {
+              console.error('Error deleting card', err);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const Card = ({ card }: { card: { id: number; name: string; balance: number } }) => {
+    const colors = ['#d31a1aff', '#27ae60', '#2980b9', '#f39c12'];
+    const color = colors[card.id % colors.length];
+
+    const handleLongPress = () => {
+      Alert.alert(
+        'Card Options',
+        'What do you want to do?',
+        [
+          { text: 'Delete', style: 'destructive', onPress: () => handleDeleteCard(card.id) },
+          { text: 'Cancel', style: 'cancel' },
+        ],
+        { cancelable: true }
+      );
+    };
 
     return (
-      <>
-      <StatusBar backgroundColor="black" barStyle="light-content" />
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: cardColors[number] }]}
-        onPress={() => handleSelectCard(number)}
+        style={[styles.card, { backgroundColor: color }]}
+        onPress={() => handleSelectCard(card.id)}
+        onLongPress={handleLongPress} // <-- long press triggers edit/delete
       >
-        <Text style={styles.cardTitle}>{cardNames[number]}</Text>
-        <Text style={styles.balanceLabel}>Bakiye</Text>
-        <Text style={styles.balance}>{balance.toFixed(2)} zł</Text>
+        <Text style={styles.cardTitle}>{card.name}</Text>
+        <Text style={styles.balanceLabel}>Balance:</Text>
+        <Text style={styles.balance}>{card.balance.toFixed(2)} zł</Text>
       </TouchableOpacity>
-      </>
     );
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>💳 Kart Seçimi</Text>
-      <Text style={styles.subHeader}>Lütfen işlem yapmak istediğiniz kartı seçin.</Text>
+      <StatusBar backgroundColor="black" barStyle="light-content" />
+      <Text style={styles.header}>💳 Choose a Card</Text>
+      <Text style={styles.subHeader}>Please choose a card that you want to make transaction.</Text>
 
       <View style={styles.cardContainer}>
-        <Card number={1} balance={balances.card1} />
-        <Card number={2} balance={balances.card2} />
+        {loading ? <Text>Loading...</Text> : cards.map(card => <Card key={card.id} card={card} />)}
+
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => router.push('/add-card')}
+        >
+          <Text style={{ color: '#4CAF50', fontSize: 24, fontWeight: 'bold', marginRight: 12 }}>＋</Text>
+          <Text style={{ color: '#fff', fontSize: 18, fontWeight: '600' }}>Add a New Card</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -76,7 +122,6 @@ const styles = StyleSheet.create({
   subHeader: { fontSize: 16, color: '#777', marginBottom: 20 },
   cardContainer: { gap: 16 },
   card: {
-    backgroundColor: '#2980b9',
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
@@ -87,4 +132,21 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 18, color: '#fff', fontWeight: '600' },
   balanceLabel: { fontSize: 14, color: '#dce6f1', marginTop: 10 },
   balance: { fontSize: 32, fontWeight: 'bold', color: '#fff', marginTop: 5 },
+  addButton: {
+    backgroundColor: '#1E1E1E',
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 25,
+    marginVertical: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: '#444',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
 });

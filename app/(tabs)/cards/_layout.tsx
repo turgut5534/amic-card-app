@@ -29,16 +29,16 @@ export default function TabLayout() {
         <Tabs.Screen
         name="index"
         options={{
-          title: 'Bakiye',
+          title: 'Balance',
           tabBarIcon: ({ color }) => (
             <Ionicons name="wallet-outline" size={28} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="transactions"
         options={{
-          title: 'Geçmiş',
+          title: 'Transactions',
            tabBarIcon: ({ color }) => (
           <Ionicons name="time-outline" size={28} color={color} />
         ),

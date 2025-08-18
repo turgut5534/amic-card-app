@@ -13,52 +13,60 @@ import {
 
 interface HistoryItem {
   id: string;
-  amount: number;
+  amount: number; // pozitif: eklenen, negatif: harcanan
   newBalance: number;
   date: string;
-  type: 'added' | 'purchased' | 'setted';
+  type: string; // işlem tipi
+  liters: number
 }
 
-const STORAGE_HISTORY_KEY_CARD1 = '@amic_history_card1';
-const STORAGE_HISTORY_KEY_CARD2 = '@amic_history_card2';
-const STORAGE_BALANCE_KEY_CARD1 = '@amic_balance_card1';
-const STORAGE_BALANCE_KEY_CARD2 = '@amic_balance_card2';
 const SELECTED_CARD_KEY = '@amic_selected_card';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export default function HistoryTab() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [balance, setBalance] = useState<number>(0);
-  const [selectedCardNumber, setSelectedCardNumber] = useState<1 | 2>(1);
   const [selectedCardName, setSelectedCardName] = useState<string>('E100');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  const getKeysForCard = (cardNumber: 1 | 2) => {
-    return {
-      balanceKey: cardNumber === 1 ? STORAGE_BALANCE_KEY_CARD1 : STORAGE_BALANCE_KEY_CARD2,
-      historyKey: cardNumber === 1 ? STORAGE_HISTORY_KEY_CARD1 : STORAGE_HISTORY_KEY_CARD2,
-      cardName: cardNumber === 1 ? 'E100' : 'Amic',
-    };
+  const getFormattedDateofData = (dateString: string) => {
+    const date = new Date(dateString); // use the passed date
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
   };
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const selectedCardStr = await AsyncStorage.getItem(SELECTED_CARD_KEY);
-      const cardNum = selectedCardStr === '2' ? 2 : 1;
-      setSelectedCardNumber(cardNum);
 
-      const { balanceKey, historyKey, cardName } = getKeysForCard(cardNum);
-      setSelectedCardName(cardName);
+      const selectedCard = await AsyncStorage.getItem(SELECTED_CARD_KEY);
+      const historyItemsRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/cards/${selectedCard}/transactions`);
+      const data = await historyItemsRes.json();
 
-      const savedBalance = await AsyncStorage.getItem(balanceKey);
-      setBalance(savedBalance ? parseFloat(savedBalance) : 0);
+      const mappedHistory: HistoryItem[] = data.transactions.map((item: any) => ({
+        id: item.transaction_id.toString(),
+        amount: item.transaction_type === 'spend' ? -parseFloat(item.amount) : parseFloat(item.amount),
+        newBalance: parseFloat(item.new_balance), // replace with actual field if you calculate balance on backend
+        date: getFormattedDateofData(item.transaction_date),
+        type: item.transaction_type === 'spend' ? 'purchased' : item.transaction_type === 'topup' ? 'added' : 'setted',
+        liters: parseFloat(item.liters)
+      }));
 
-      const savedHistory = await AsyncStorage.getItem(historyKey);
-      setHistory(savedHistory ? JSON.parse(savedHistory) : []);
+      const cardInfoRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/cards/${selectedCard}/info`);
+      const cardInfo = await cardInfoRes.json();
+
+      setSelectedCardName(cardInfo.card_name)
+      setBalance(parseFloat(cardInfo.balance));
+      setHistory(mappedHistory);
+ 
+
     } catch (e) {
       console.error('Failed to load history or balance', e);
       setHistory([]);
@@ -85,10 +93,16 @@ export default function HistoryTab() {
     <View style={[styles.item, { borderLeftColor: item.amount < 0 ? '#e74c3c' : '#27ae60' }]}>
       <View style={{ flex: 1 }}>
         <Text style={styles.itemText}>
-          {item.type === 'added' && <>+{item.amount.toFixed(2)} zł eklendi → Bakiye: {item.newBalance.toFixed(2)} zł</>}
-          {item.type === 'purchased' && <>{Math.abs(item.amount).toFixed(2)} zł harcandı → Bakiye: {item.newBalance.toFixed(2)} zł</>}
-          {item.type === 'setted' && <>{item.newBalance.toFixed(2)} zł manuel ayarlandı</>}
+          {item.type === 'added' && <>+{item.amount.toFixed(2)} zł added → Balance: {item.newBalance.toFixed(2)} zł</>}
+          {item.type === 'purchased' && <>{Math.abs(item.amount).toFixed(2)} zł spent → Balance: {item.newBalance.toFixed(2)} zł</>}
         </Text>
+
+         {item.type === 'purchased' && item.liters != null && (
+          <Text style={styles.historyLiters}>
+            Yakıt: {item.liters.toFixed(2)} L
+          </Text>
+        )}
+
         <Text style={styles.dateText}>{item.date}</Text>
       </View>
     </View>
@@ -107,10 +121,10 @@ export default function HistoryTab() {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>
-        {selectedCardName} Kart Bakiyesi: {balance.toFixed(2)} zł
+        {selectedCardName} Card Balance: {balance.toFixed(2)} zł
       </Text>
       <Text style={styles.title}>
-        Geçmiş ({history.length} işlem)
+        History ({history.length} transactions)
       </Text>
 
       {loading ? (
@@ -121,7 +135,7 @@ export default function HistoryTab() {
             data={pageData}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
-            ListEmptyComponent={<Text style={styles.empty}>Henüz işlem yok</Text>}
+            ListEmptyComponent={<Text style={styles.empty}>No transaction yet</Text>}
             refreshing={refreshing}
             onRefresh={onRefresh}
             contentContainerStyle={{ paddingBottom: 16 }}
@@ -129,7 +143,7 @@ export default function HistoryTab() {
 
           <View style={styles.pager}>
             <TouchableOpacity onPress={goPrev} disabled={currentPage === 1} style={[styles.pageBtn, currentPage === 1 && styles.disabledBtn]}>
-              <Text style={styles.pageBtnText}>Önceki</Text>
+              <Text style={styles.pageBtnText}>Previous</Text>
             </TouchableOpacity>
 
             <View style={styles.pageNumbers}>
@@ -139,7 +153,7 @@ export default function HistoryTab() {
             </View>
 
             <TouchableOpacity onPress={goNext} disabled={currentPage === totalPages} style={[styles.pageBtn, currentPage === totalPages && styles.disabledBtn]}>
-              <Text style={styles.pageBtnText}>Sonraki</Text>
+              <Text style={styles.pageBtnText}>Next</Text>
             </TouchableOpacity>
           </View>
         </>
@@ -170,4 +184,10 @@ const styles = StyleSheet.create({
   pageNumbers: { flexDirection: 'row', alignItems: 'center' },
   pageNumber: { marginHorizontal: 6, fontWeight: '700' },
   pageNumberSeparator: { marginHorizontal: 6, color: '#666' },
+  historyLiters: {
+  fontSize: 14,
+  color: '#555',
+  marginTop: 2,
+}
+
 });

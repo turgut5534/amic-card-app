@@ -10,13 +10,10 @@ interface HistoryItem {
   amount: number; // pozitif: eklenen, negatif: harcanan
   newBalance: number;
   date: string;
-  type: 'added' | 'purchased' | 'setted'; // işlem tipi
+  type: string; // işlem tipi
+  liters: number
 }
 
-const STORAGE_BALANCE_KEY_CARD1 = '@amic_balance_card1';
-const STORAGE_BALANCE_KEY_CARD2 = '@amic_balance_card2';
-const STORAGE_HISTORY_KEY_CARD1 = '@amic_history_card1';
-const STORAGE_HISTORY_KEY_CARD2 = '@amic_history_card2';
 const SELECTED_CARD_KEY = '@amic_selected_card';
 
 export default function IndexScreen() {
@@ -25,7 +22,7 @@ export default function IndexScreen() {
   const [inputValue, setInputValue] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [selectedCardName, setSelectedCardName] = useState('E100');
-  const [selectedCardNumber, setSelectedCardNumber] = useState<1 | 2>(1);
+  const [fuelPrice, setFuelPrice] = useState<number>(2.40); // default value
 
   const router = useRouter(); 
 
@@ -40,11 +37,23 @@ export default function IndexScreen() {
     return `${day}/${month}/${year} ${hours}:${minutes}`;
   };
 
+  const getFormattedDateofData = (dateString: string) => {
+  const date = new Date(dateString); // use the passed date
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+};
+
+
   // İşlem geçmişi ekle
   const addHistoryItem = (
     amount: number,
     newBal: number,
-    type: 'added' | 'purchased' | 'setted'
+    type: 'added' | 'purchased' | 'setted',
+    liters: number
   ) => {
     const newHistoryItem: HistoryItem = {
       id: Date.now().toString(),
@@ -52,16 +61,9 @@ export default function IndexScreen() {
       newBalance: newBal,
       date: getFormattedDate(),
       type,
+      liters
     };
     setHistory(prev => [newHistoryItem, ...prev]);
-  };
-
-  // AsyncStorage key'lerini kart seçimine göre döner
-  const getKeysForCard = (cardNumber: 1 | 2) => {
-    return {
-      balanceKey: cardNumber === 1 ? STORAGE_BALANCE_KEY_CARD1 : STORAGE_BALANCE_KEY_CARD2,
-      historyKey: cardNumber === 1 ? STORAGE_HISTORY_KEY_CARD1 : STORAGE_HISTORY_KEY_CARD2,
-    };
   };
 
   // Veri yükleme
@@ -69,19 +71,33 @@ export default function IndexScreen() {
     const loadData = async () => {
       try {
         const selectedCard = await AsyncStorage.getItem(SELECTED_CARD_KEY);
-        const cardNum = selectedCard === '2' ? 2 : 1;
-        setSelectedCardNumber(cardNum);
-        setSelectedCardName(cardNum === 1 ? 'E100' : 'Amic');
+        const cardInfoRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/cards/${selectedCard}/info`);
+        const cardInfo = await cardInfoRes.json();
 
-        const { balanceKey, historyKey } = getKeysForCard(cardNum);
+        setSelectedCardName(cardInfo.card_name)
 
-        const savedBalance = await AsyncStorage.getItem(balanceKey);
-        const savedHistory = await AsyncStorage.getItem(historyKey);
+        const latestFuelPriceRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/cards/${selectedCard}/latest-fuel-price`);
+        const latestFuelPriceData = await latestFuelPriceRes.json()
 
-        setBalance(savedBalance ? parseFloat(savedBalance) : 0);
-        setHistory(savedHistory ? JSON.parse(savedHistory) : []);
+        setFuelPrice(latestFuelPriceData.latest_fuel_price ?? fuelPrice)
+        setBalance(parseInt(cardInfo.balance));
+    
+        const historyItemsRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/cards/${selectedCard}/transactions`);
+        const data = await historyItemsRes.json();
+
+        const mappedHistory: HistoryItem[] = data.transactions.map((item: any) => ({
+          id: item.transaction_id.toString(),
+          amount: item.transaction_type === 'spend' ? -parseFloat(item.amount) : parseFloat(item.amount),
+          newBalance: parseFloat(item.new_balance), // replace with actual field if you calculate balance on backend
+          date: getFormattedDateofData(item.transaction_date),
+          type: item.transaction_type === 'spend' ? 'purchased' : item.transaction_type === 'topup' ? 'added' : 'setted',
+          liters: parseFloat(item.liters)
+        }));
+
+        setHistory(mappedHistory);
+
       } catch (error) {
-        console.error('Veri yüklenirken hata oluştu', error);
+        console.error('An error occurred', error);
       } finally {
         setLoading(false);
       }
@@ -89,44 +105,60 @@ export default function IndexScreen() {
     loadData();
   }, []);
 
-  // Veri kaydetme
-  useEffect(() => {
-    if (!loading) {
-      const saveData = async () => {
-        const { balanceKey, historyKey } = getKeysForCard(selectedCardNumber);
-        await AsyncStorage.setItem(balanceKey, balance.toString());
-        await AsyncStorage.setItem(historyKey, JSON.stringify(history));
-      };
-      saveData();
-    }
-  }, [balance, history, loading, selectedCardNumber]);
-
   // Bakiye azalt (harcama)
-  const handleSubtract = () => {
+  const handleSubtract = async () => {
     const value = parseFloat(inputValue);
+    const selectedCard = await AsyncStorage.getItem(SELECTED_CARD_KEY);
+
+    const currentFuelPrice = parseFloat(fuelPrice.toFixed(2));
 
     if (isNaN(value) || value <= 0) {
-      Alert.alert('Geçersiz miktar', 'Lütfen pozitif bir miktar giriniz.');
+      Alert.alert('Invalid Amount', 'Please enter a positive amount.');
       return;
     }
 
     if (value > balance) {
-      Alert.alert('Yetersiz bakiye', 'Girdiğiniz miktar bakiyenizden büyük olamaz.');
+      Alert.alert('Insufficient balance', 'You can not spend more than you have.');
       return;
     }
 
     Alert.alert(
-      'Onay',
-      `${value.toFixed(2)} zł yakıt alınacaktır. Emin misiniz?`,
+      'Confirm',
+      `${value.toFixed(2)} zł will be spent. Are you sure?`,
       [
-        { text: 'İptal', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Evet',
-          onPress: () => {
-            const newBal = balance - value;
-            setBalance(newBal);
-            addHistoryItem(-value, newBal, 'purchased');
-            setInputValue('');
+          text: 'Yes',
+          onPress: async () => {
+            try {
+              // Send POST request to backend
+              const response = await fetch(
+                `${process.env.EXPO_PUBLIC_API_URL}/cards/${selectedCard}/spend`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ amount: value, fuel_price: currentFuelPrice }),
+                }
+              );
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                Alert.alert('Error', data.error || 'An error occurred.');
+                return;
+              }
+
+              // Update balance and history from server response
+              const newBalance = parseFloat(data.remaining_balance);
+              setBalance(newBalance);
+              addHistoryItem(-value, newBalance, 'purchased', data.liters );
+              setInputValue('');
+            } catch (error) {
+              console.error(error);
+              Alert.alert('Error', 'Can not connect to the server.');
+            }
           },
         },
       ],
@@ -134,27 +166,54 @@ export default function IndexScreen() {
     );
   };
 
+
   // Bakiye ekle
-  const handleAddBalance = () => {
+  const handleAddBalance = async () => {
     const value = parseFloat(inputValue);
 
+    const selectedCard = await AsyncStorage.getItem(SELECTED_CARD_KEY);
+
     if (isNaN(value) || value <= 0) {
-      Alert.alert('Geçersiz miktar', 'Lütfen pozitif bir miktar giriniz.');
+      Alert.alert('Invalid Amount', 'Please enter a positive amount.');
       return;
     }
 
     Alert.alert(
-      'Onay',
-      `${value.toFixed(2)} zł bakiye eklenecektir. Emin misiniz?`,
+      'Confirm',
+      `${value.toFixed(2)} zł will be added. Are you sure?`,
       [
-        { text: 'İptal', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Evet',
-          onPress: () => {
-            const newBal = balance + value;
-            setBalance(newBal);
-            addHistoryItem(value, newBal, 'added');
-            setInputValue('');
+          text: 'Yes',
+          onPress: async () => {
+            try {
+              // Send POST request to backend
+              const response = await fetch(
+                `${process.env.EXPO_PUBLIC_API_URL}/cards/${selectedCard}/topup`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ amount: value }),
+                }
+              );
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                Alert.alert('Error', data.error || 'Error while topping up.');
+                return;
+              }
+
+              // Update local state after successful request
+              setBalance(parseFloat(data.balance));
+              addHistoryItem(value, parseFloat(data.balance), 'added', 0);
+              setInputValue('');
+            } catch (error) {
+              console.error(error);
+              Alert.alert('Error', 'An error occurred connecting to the server.');
+            }
           },
         },
       ],
@@ -167,31 +226,52 @@ export default function IndexScreen() {
        <StatusBar backgroundColor="black" barStyle="light-content" />
         <SafeAreaView edges={['bottom']}  style={styles.container}>
                 <TouchableOpacity style={styles.backSmallButton} onPress={() => router.push('/')}>
-            <Text style={styles.backSmallButtonText}>← Kart Seç</Text>
+            <Text style={styles.backSmallButtonText}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.title}>💳 {selectedCardName} Kart</Text>
 
-          <Text style={styles.balance}>Bakiye: {balance.toFixed(2)} zł</Text>
+          <Text style={styles.balance}>Balance: {balance.toFixed(2)} zł</Text>
 
           <TextInput
             style={styles.input}
             keyboardType="numeric"
-            placeholder="Miktar giriniz"
+            placeholder="Enter an amount"
             value={inputValue}
             onChangeText={setInputValue}
           />
 
+          {/* Yakıt fiyatı input */}
+          <View style={styles.stepperContainer}>
+            <Text style={styles.stepperLabel}>Fuel Price (zł/L)</Text>
+            <View style={styles.stepperRow}>
+              <TouchableOpacity
+                style={styles.stepperButton}
+                onPress={() => setFuelPrice(prev => Math.max(prev - 0.01, 0))}
+              >
+                <Text style={styles.stepperButtonText}>−</Text>
+              </TouchableOpacity>
+              <Text style={styles.stepperValue}>{fuelPrice.toFixed(2)}</Text>
+              <TouchableOpacity
+                style={styles.stepperButton}
+                onPress={() => setFuelPrice(prev => prev + 0.01)}
+              >
+                <Text style={styles.stepperButtonText}>+</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+
           <View style={styles.buttonRow}>
             <TouchableOpacity style={styles.buttonSubtract} onPress={handleSubtract}>
-              <Text style={styles.buttonText}>Yakıt Al</Text>
+              <Text style={styles.buttonText}>Buy Fuel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.buttonAdd} onPress={handleAddBalance}>
-              <Text style={styles.buttonText}>Bakiye Ekle</Text>
+              <Text style={styles.buttonText}>Top Up</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.historyHeader}>
-            <Text style={styles.historyTitle}>Son İşlemler</Text>
+            <Text style={styles.historyTitle}>Recent Transactions</Text>
           </View>
 
           <FlatList
@@ -208,20 +288,24 @@ export default function IndexScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.historyText}>
                     {item.type === 'added' && (
-                      <>+{item.amount.toFixed(2)} zł eklendi → Bakiye: {item.newBalance.toFixed(2)} zł</>
+                      <>+{item.amount.toFixed(2)} zł added → Balance: {item.newBalance.toFixed(2)} zł</>
                     )}
                     {item.type === 'purchased' && (
-                      <>{item.amount.toFixed(2)} zł harcandı → Bakiye : {item.newBalance.toFixed(2)} zł</>
-                    )}
-                    {item.type === 'setted' && (
-                      <>{item.newBalance.toFixed(2)} zł manuel ayarlandı</>
+                      <>{item.amount.toFixed(2)} zł spent → Balance : {item.newBalance.toFixed(2)} zł</>
                     )}
                   </Text>
+
+                    {item.type === 'purchased' && item.liters != null && (
+                      <Text style={styles.historyLiters}>
+                        Yakıt: {item.liters.toFixed(2)} L
+                      </Text>
+                    )}
+
                   <Text style={styles.historyDate}>{item.date}</Text>
                 </View>
               </View>
             )}
-            ListEmptyComponent={<Text style={styles.emptyHistory}>Henüz işlem yok</Text>}
+            ListEmptyComponent={<Text style={styles.emptyHistory}>No transaction yet</Text>}
           />
 
         </SafeAreaView>
@@ -346,5 +430,47 @@ backSmallButtonText: {
   fontWeight: '600',
   fontSize: 14,
 },
+stepperContainer: {
+  marginBottom: 20,
+},
+stepperLabel: {
+  fontSize: 14,
+  color: '#555',
+  marginBottom: 5,
+  fontWeight: '500',
+},
+stepperRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: 'white',
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: '#ccc',
+  paddingHorizontal: 10,
+  paddingVertical: 5,
+},
+stepperButton: {
+  backgroundColor: '#3498db',
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  borderRadius: 6,
+},
+stepperButtonText: {
+  color: 'white',
+  fontSize: 20,
+  fontWeight: 'bold',
+},
+stepperValue: {
+  flex: 1,
+  textAlign: 'center',
+  fontSize: 16,
+  fontWeight: '600',
+},
+historyLiters: {
+  fontSize: 14,
+  color: '#555',
+  marginTop: 2,
+}
+
 
 });
